@@ -1,0 +1,8 @@
+[project]
+name = "chessai"
+dynamic = ["version"]
+dependencies = [
+  "chess",
+  "pygame",
+  "tensorflow"
+]

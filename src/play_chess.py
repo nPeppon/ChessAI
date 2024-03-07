@@ -2,11 +2,13 @@ import chess
 from chess import Board, Square
 import random
 import pickle
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-import qlearning_trainer
-from chess_model import chess_utils
+# from .. import chess_helper
 from typing import Tuple, List
 import numpy as np
+from chessai.src.models import base_bot, qlearning_bot
 
 # Define colors
 WHITE = (210, 210, 210)
@@ -65,6 +67,40 @@ def choose_color_screen():
     pygame.quit()
     return player_color
 
+def draw_text(text, color, x, y):
+  text_surface = font.render(text, True, color)
+  text_rect = text_surface.get_rect()
+  text_rect.center = (x, y)
+  screen.blit(text_surface, text_rect)
+
+def select_bot() -> base_bot.BaseBot:
+  """
+  Selects a bot based on user input using Pygame events. Returns the selected bot.
+  """
+  pygame.init()
+  while True:
+    # Handle events
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      elif event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_1:
+          return QlearningBot.QlearningBot()
+        elif event.key == pygame.K_2:
+          raise "Bot not implemented yet"
+
+    # Clear the screen
+    screen.fill(WHITE)
+
+    # Draw options
+    draw_text("Choose a bot:", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
+    draw_text("1. Q-Learning Bot", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+    draw_text("2. PPO bot", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
+
+    # Update the display
+    pygame.display.flip()
+
 def draw_board(screen, board, player_color):
   for row in range(8):
     for col in range(8):
@@ -95,7 +131,6 @@ def draw_valid_moves(screen, board: Board, selected_square: Square, player_color
         to_col, to_row = convert_square_to_coord(move.to_square, player_color)
         pygame.draw.rect(screen, GREEN, pygame.Rect(to_col * SQUARESIZE, to_row * SQUARESIZE, SQUARESIZE, SQUARESIZE), width=3)
 
-
 def convert_square_to_coord(square, player_color):
   if player_color == chess.WHITE:
     row = 7 - chess.square_rank(square)
@@ -113,25 +148,11 @@ def convert_click_to_square(x, y, player_color):
   square = chess.parse_square(chess.SQUARE_NAMES[index])
   return chess.parse_square(chess.SQUARE_NAMES[index])
 
-
 def select_square(x, y, player_color):
   return convert_click_to_square(x// SQUARESIZE, y// SQUARESIZE, player_color)
 
-def do_ai_move(board: Board, q_table: dict):
-  # AI's move
-  state = chess_utils.state_to_string(board)
-  if state not in q_table:
-    print("Encountered unknown state. Playing random move.")
-    move = random.choice(list(board.legal_moves))
-    move = move.uci()
-  else:
-    # Choose the action with the highest Q-value
-    action = np.argmax(q_table[state])
-    move = chess_utils.action_to_uci(action, board)
-  print(f"AI move: {move}")
-  board.push_uci(move)
-
-def play_against_ai(board, q_table):
+def play_against_ai(board):
+  bot = select_bot()
   player_color = choose_color_screen()
   pygame.init()
   screen = pygame.display.set_mode((8 * SQUARESIZE, 8 * SQUARESIZE))
@@ -143,7 +164,7 @@ def play_against_ai(board, q_table):
 
   game_over = False
   if player_color == chess.BLACK:
-    do_ai_move(board, q_table)
+    bot.choose_move(board)
   while not game_over:
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
@@ -171,7 +192,7 @@ def play_against_ai(board, q_table):
             if clicked_square in [move.to_square for move in selected_piece_moves]:
               board.push([move for move in selected_piece_moves if move.to_square == clicked_square][0])
               if not board.is_game_over():
-                do_ai_move(board, q_table)
+                bot.choose_move(board)
             selected_square = None
             selected_piece_moves = []
 
@@ -184,7 +205,7 @@ def play_against_ai(board, q_table):
           if released_square in [move.to_square for move in selected_piece_moves]:
             board.push([move for move in selected_piece_moves if move.to_square == released_square][0])
             if not board.is_game_over():
-              do_ai_move(board, q_table)
+              do_ai_move(board,  )
           selected_square = None
           selected_piece_moves = []
 
@@ -198,12 +219,11 @@ def play_against_ai(board, q_table):
 
   pygame.quit()
   print(f"Winner: {board.outcome()}")
+  print(f"Winner: {board.result()}")
 
 
 if __name__ == "__main__":
-  # Load Q-table (replace with your Q-table filename)
-  q_table = qlearning_trainer.load_q_table("chess_model\\q_table.dat")
-
   # Play against the AI
   board = chess.Board()
-  play_against_ai(board, q_table)
+  play_against_ai(board)
+  

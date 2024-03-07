@@ -25,6 +25,9 @@ def save_q_table(q_table, filename):
     pickle.dump(q_table, f)
 
 def self_play_qlearning(iBoard, iQ_table, iLearning_rate, iDiscount_factor, iEpsilon):
+  states = []
+  actions = []
+  rewards = []
   while not iBoard.is_game_over():
     state = chess_utils.state_to_string(iBoard)
 
@@ -37,12 +40,29 @@ def self_play_qlearning(iBoard, iQ_table, iLearning_rate, iDiscount_factor, iEps
     iBoard.push_uci(move)
 
     next_state = chess_utils.state_to_string(iBoard)
-    reward = chess_utils.evaluate_board(iBoard)  # Update reward function based on your needs
-
+    # reward = chess_utils.evaluate_board(iBoard)  # Update reward function based on your needs
+    
+    # Store the state, action, and reward
+    states.append(state)
+    actions.append(action)
+    # rewards.append(reward)
     # Update Q-table using the Bellman equation
-    max_q_next = max(iQ_table[next_state]) if next_state in iQ_table else 0
-    iQ_table[state][action] += iLearning_rate * (reward + iDiscount_factor * max_q_next - iQ_table[state][action])
-    iQ_table[state][action] += iLearning_rate * (reward + iDiscount_factor * max_q_next - iQ_table[state][action])
+    # max_q_next = max(iQ_table[next_state]) if next_state in iQ_table else 0
+    # iQ_table[state][action] += iLearning_rate * (reward + iDiscount_factor * max_q_next - iQ_table[state][action])
+
+  # Update Q-table based on the game result
+  winner = board.result()
+  for i in range(len(states)):
+    state = states[i]
+    action = actions[i]
+    reward = 0.5
+    if winner == '1-0':
+      reward = 1 if i % 2 == 0 else -1
+    elif winner == '0-1':
+      reward = -1 if i % 2 == 0 else 1
+
+    max_q_next = max(q_table[next_state]) if next_state in q_table else 0
+    q_table[state][action] += learning_rate * (reward + discount_factor * max_q_next - q_table[state][action])
 
   return iQ_table
 
@@ -52,14 +72,14 @@ if __name__ == "__main__":
   # Initialize learning parameters
   learning_rate = 0.1
   discount_factor = 0.9
-  espilon = 0.2
+  espilon = 0.8
 
   # Load or initialize Q-table
-  q_table = load_q_table("chess_model\\q_table.dat")
+  q_table = load_q_table("data\\q_table.dat")
   # print(q_table)
 
   # Run multiple games in a loop
-  total_games = 10  # Adjust the number of games for extended training
+  total_games = 50000  # Adjust the number of games for extended training
   completed_games = 0
   for game_number in range(total_games):
     board = chess.Board()
@@ -69,11 +89,11 @@ if __name__ == "__main__":
     # Print progress every 5% of games completed
     if total_games //40 > 0 and completed_games % (total_games // 40) == 0:
       progress = (completed_games / total_games) * 100
-      print(f"Training progress: {progress}% completed")
-      save_q_table(q_table, "chess_model\\q_table.dat")
+      print(f"Training progress: {progress:.2f}% completed")
+      save_q_table(q_table, "data\\q_table.dat")
 
   # Save Q-table only once at the end
-  save_q_table(q_table, "chess_model\\q_table.dat")
+  save_q_table(q_table, "data\\q_table.dat")
 
   # print(q_table)
   # Print final message
