@@ -8,7 +8,7 @@ import pygame
 # from .. import chess_helper
 from typing import Tuple, List
 import numpy as np
-from chessai.src.models import base_bot, qlearning_bot
+from chessai.models import base_bot, qlearning_bot
 
 # Define colors
 WHITE = (210, 210, 210)

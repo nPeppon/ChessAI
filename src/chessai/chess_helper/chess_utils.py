@@ -59,7 +59,7 @@ def make_random_move(board):
   legal_moves = list(board.legal_moves)
   return random.choice(legal_moves)
 
-def board_to_vec(board: Board):
+def board_to_vec(board: chess.Board):
   return fen_to_vec(board.fen())
 
 def fen_to_vec(fen: str):
@@ -117,7 +117,7 @@ def fen_to_vec(fen: str):
     return l
 
 def is_substring(string1, string2):
-  return 1 if string1 in string2 else
+  return 1 if string1 in string2 else 0
 
 def vec_to_fen(feature_vector):
   """
