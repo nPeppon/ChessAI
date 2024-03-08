@@ -5,6 +5,7 @@ import pickle
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
+from pygame.locals import *
 # from .. import chess_helper
 from typing import Tuple, List
 import numpy as np
@@ -15,7 +16,9 @@ WHITE = (210, 210, 210)
 BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
 GREEN = (0, 255, 0)  # Color for highlighting valid moves
+VIBRANT_BLUE = (0, 0, 255) # Color for highlighting latest move
 SQUARESIZE = 80  # Size of each chess square
+OUTCOME_BAR_HEIGHT = 50
 
 # Load pieces images (replace with your image paths)
 piece_images = {'p': pygame.image.load('data\\b_pawn.png'),
@@ -78,28 +81,33 @@ def select_bot() -> base_bot.BaseBot:
   Selects a bot based on user input using Pygame events. Returns the selected bot.
   """
   pygame.init()
-  while True:
-    # Handle events
-    for event in pygame.event.get():
-      if event.type == pygame.QUIT:
-        pygame.quit()
-        sys.exit()
-      elif event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_1:
-          return QlearningBot.QlearningBot()
-        elif event.key == pygame.K_2:
-          raise "Bot not implemented yet"
+  bots = [base_bot.BaseBot(), qlearning_bot.QlearningBot()]
+  # Set up some constants
+  WIDTH, HEIGHT = 640, 480
+  FONT_SIZE = 32
 
-    # Clear the screen
-    screen.fill(WHITE)
+  screen = pygame.display.set_mode((WIDTH, HEIGHT))
+  font = pygame.font.Font(None, FONT_SIZE)
 
-    # Draw options
-    draw_text("Choose a bot:", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
-    draw_text("1. Q-Learning Bot", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-    draw_text("2. PPO bot", BLACK, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
+  running = True
+  while running:
+      for event in pygame.event.get():
+          if event.type == QUIT:
+              running = False
+          elif event.type == KEYDOWN:
+              if K_1 <= event.key <= K_9:
+                  index = event.key - K_1
+                  if index < len(bots):
+                      return bots[index]
 
-    # Update the display
-    pygame.display.flip()
+      screen.fill((0, 0, 0))
+      for i, bot in enumerate(bots):
+          text = font.render(f"{i+1}. {bot.name}", True, (255, 255, 255))  # replace bot.name with how you get the bot's name
+          screen.blit(text, (10, i * FONT_SIZE))
+
+      pygame.display.flip()
+
+  pygame.quit()
 
 def draw_board(screen, board, player_color):
   for row in range(8):
@@ -130,6 +138,13 @@ def draw_valid_moves(screen, board: Board, selected_square: Square, player_color
         # print(move.to_square)
         to_col, to_row = convert_square_to_coord(move.to_square, player_color)
         pygame.draw.rect(screen, GREEN, pygame.Rect(to_col * SQUARESIZE, to_row * SQUARESIZE, SQUARESIZE, SQUARESIZE), width=3)
+        
+def draw_last_move(screen, board: Board, latest_uci_move: str, player_color: chess.Color):
+  if latest_uci_move is not None and len(latest_uci_move) == 4:
+    squares = [chess.parse_square(latest_uci_move[:2]), chess.parse_square(latest_uci_move[2:])]
+    for square in squares:
+      to_col, to_row = convert_square_to_coord(square, player_color)
+      pygame.draw.rect(screen, VIBRANT_BLUE, pygame.Rect(to_col * SQUARESIZE, to_row * SQUARESIZE, SQUARESIZE, SQUARESIZE), width=3)
 
 def convert_square_to_coord(square, player_color):
   if player_color == chess.WHITE:
@@ -151,20 +166,47 @@ def convert_click_to_square(x, y, player_color):
 def select_square(x, y, player_color):
   return convert_click_to_square(x// SQUARESIZE, y// SQUARESIZE, player_color)
 
+def draw_outcome(screen, board: Board):
+  outcome = board.outcome()
+  if outcome is not None:
+    outcome_str = str(outcome)
+    start = outcome_str.find("Termination.") + len("Termination.")
+    end = outcome_str.find(":", start)
+    termination = outcome_str[start:end]
+    result = board.result()
+    # Render the outcome and result to the outcome bar
+    font = pygame.font.Font(None, 32)
+    outcome_text = font.render(f"Outcome: {termination}", True, (255, 255, 255))
+    result_text = font.render(f"Result: {result}", True, (255, 255, 255))
+    # Create a new surface for the outcome bar
+    outcome_bar = pygame.Surface((SQUARESIZE * 8, OUTCOME_BAR_HEIGHT))
+    outcome_bar.fill((0, 0, 0))  # Clear the outcome bar
+    outcome_bar.blit(outcome_text, (10, 10))
+    outcome_bar.blit(result_text, (10, 30))
+    screen.blit(outcome_bar, (0, 8*SQUARESIZE))
+
+def draw_game(screen, board: Board, player_color: chess.Color, selected_square: Square, latest_uci_move: str):
+  draw_board(screen, board, player_color)
+  draw_last_move(screen, board, latest_uci_move, player_color)
+  draw_valid_moves(screen, board, selected_square, player_color)
+  draw_outcome(screen, board)
+  pygame.display.flip()
+
 def play_against_ai(board):
   bot = select_bot()
   player_color = choose_color_screen()
   pygame.init()
-  screen = pygame.display.set_mode((8 * SQUARESIZE, 8 * SQUARESIZE))
+  # Define a new constant for the height of the outcome bar
+  screen = pygame.display.set_mode((8 * SQUARESIZE, 8 * SQUARESIZE + OUTCOME_BAR_HEIGHT))
   pygame.display.set_caption("Chess")
   clock = pygame.time.Clock()
-        
+      
   selected_square = None
   selected_piece_moves = []
-
+  last_uci_move = None
   game_over = False
   if player_color == chess.BLACK:
-    bot.choose_move(board)
+    last_uci_move = bot.choose_move(board)
   while not game_over:
     for event in pygame.event.get():
       if event.type == pygame.QUIT:
@@ -192,7 +234,7 @@ def play_against_ai(board):
             if clicked_square in [move.to_square for move in selected_piece_moves]:
               board.push([move for move in selected_piece_moves if move.to_square == clicked_square][0])
               if not board.is_game_over():
-                bot.choose_move(board)
+                last_uci_move = bot.choose_move(board)
             selected_square = None
             selected_piece_moves = []
 
@@ -209,13 +251,20 @@ def play_against_ai(board):
           selected_square = None
           selected_piece_moves = []
 
-    draw_board(screen, board, player_color)
-    draw_valid_moves(screen, board, selected_square, player_color)
-    pygame.display.flip()
+    draw_game(screen, board, player_color, selected_square, last_uci_move)
     clock.tick(60)  # Limit framerate to 60fps
     # Check for game over after each move
     if board.is_game_over():
       game_over = True
+
+  not_quit = True
+  while game_over and not_quit:
+    # Draw the board and the outcome bar
+    draw_game(screen, board, player_color, selected_square, last_uci_move)
+    clock.tick(60)  # Limit framerate to 60fps
+    for event in pygame.event.get():
+      if event.type == QUIT or (event.type == KEYDOWN and event.key == K_q):
+        not_quit = False
 
   pygame.quit()
   print(f"Winner: {board.outcome()}")

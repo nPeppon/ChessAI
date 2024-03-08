@@ -77,7 +77,6 @@ def fen_to_vec(fen: str):
         - en passant square: 64 elements, 1 if the en passant square is allowed, 0 otherwise
         - the number of half moves since the last capture
         - the number of full moves
-        
     """
     posFen = fen.split()[0]
     board = chess.BaseBoard(posFen)

@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-from chess_model import fen_to_vec, vec_to_fen
+from chessai.chess_helper.chess_utils import fen_to_vec, vec_to_fen
 
 class TestChessConversion(unittest.TestCase):
     def test_conversion_round_trip(self):
