@@ -110,7 +110,6 @@ def draw_text(text, color, x, y):
   text_rect.center = (x, y)
   screen.blit(text_surface, text_rect)
 
-
 def draw_board(screen, board, player_color):
   for row in range(8):
     for col in range(8):

@@ -2,10 +2,12 @@ import chess
 # import random
 # import pickle
 import numpy as np
+from typing import Tuple
 
 
-pieces = [chess.PAWN,chess.KNIGHT,chess.BISHOP,chess.ROOK,chess.QUEEN,chess.KING]
-colours = [chess.WHITE,chess.BLACK]
+CHESS_PIECES = [chess.PAWN,chess.KNIGHT,chess.BISHOP,chess.ROOK,chess.QUEEN,chess.KING]
+CHESS_COLOURS = [chess.WHITE,chess.BLACK]
+CHESS_NUM_ACTIONS = 4672
 
 def piece_symbol(piece):
   # Map piece type ID to corresponding symbol
@@ -82,37 +84,40 @@ def fen_to_vec(fen: str):
     board = chess.BaseBoard(posFen)
     l = []
 
-    for colour in colours:
-        for piece in pieces:
+    for colour in CHESS_COLOURS:
+        for piece in CHESS_PIECES:
             v = np.zeros(64)
             for i in list(board.pieces(piece,colour)):
                 v[i] = 1
-            print('Piece: ' + str(piece))
-            print('colour: ' + str(colour))
-            print(v)
             l.append(v)
     # Side to move - 1 = white, 0 = black
     active_color = 1 if fen.split()[1] == 'w' else 0
-    l.append(active_color)
+    l.append([active_color])
     
     # Castling rights - 0 = not allowed, 1 = allowed 
     castling_sides = ['K', 'Q', 'k', 'q']
     castling_rights_vec = [is_substring(side, fen.split()[2]) for side in castling_sides]
-    l.extend(castling_rights_vec)
+    l.append(castling_rights_vec)
     #Possible en-passant
     en_passant = np.zeros(64)
     if (fen.split()[3] != '-'):
-      en_passant_target = chess.SQUARES[chess.SQUARE_NAMES[fen.split()[3]]]
-      en_passant[en_passant_square] = 1
-    l.extend(en_passant)
+      try:
+        en_passant_target = chess.parse_square(fen.split()[3])
+        en_passant[en_passant_target] = 1
+      except:
+        print(fen.split()[3])
+        raise 'En passant square not found in chess.SQUARES'
+    l.append(en_passant)
     #Halfmove clock
     halfmove_clock = int(fen.split()[4])
-    l.append(halfmove_clock)
+    l.append([halfmove_clock])
     #Fullmove number
     fullmove_number = int(fen.split()[5])
-    l.append(fullmove_number)
+    l.append([fullmove_number])
     
     l = np.concatenate(l)
+    # print('Vec:' + str(l))
+    # print('Vec shape:' + str(l.shape))
     return l
 
 def is_substring(string1, string2):
@@ -179,3 +184,141 @@ def vec_to_fen(feature_vector):
   
   return fen
 
+def vec_to_board(feature_vector):
+  """
+  Convert the given feature vector representation of the board state to a chess.Board object.
+  
+  Args:
+    feature_vector (np.array): The feature vector representation of the board state.
+  
+  Returns:
+    chess.Board: The board state represented by the feature vector.
+  """
+  fen = vec_to_fen(feature_vector)
+  return chess.Board(fen)
+
+def action_index_to_move(action_index: int) -> chess.Move:
+  """
+  Convert the given action index to a UCI move string.
+  
+  Args:
+    action_index (int): The action index in the vector of all possible actions of 8*8*(8*7 +8 + 9) = 4672 described as such:
+    - for each square 8*8 = 64 there are (8*7 +8 + 9) planes of possible moves are
+    - 7 squares in each direction {N, NE, E, SE, S, SW, W, NW} + 8 knight moves
+    - 9 pawn promotions: 3 promotions (queen promotion is defulat) for 3 possible captures
+  
+  Returns:
+    chess.Move: The chess move string corresponding to the given action index.
+  """
+  # Each 73 numbers, it repeats for a new square
+  
+  # 8*7+8+9 = 73
+  directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+  tot_plane_of_execution = 73
+  starting_square_index = action_index // tot_plane_of_execution
+  plane_of_execution = action_index % tot_plane_of_execution
+  starting_square = chess.SQUARE_NAMES[starting_square_index]
+  chess.Square()
+  move = chess.Move.null()
+  promotion = None
+  target_index = -1
+  if plane_of_execution < 8*7:
+    # Move in the direction of the plane
+    direction = plane_of_execution // 7
+    distance = plane_of_execution % 7 + 1
+    if directions[direction] == 'N': # up
+      target_index = starting_square_index + 8*distance
+    if directions[direction] == 'NE': # up-rigth
+      target_index = starting_square_index + 8*distance + distance
+    if directions[direction] == 'NW': # up-left
+      target_index = starting_square_index + 8*distance - distance
+    if directions[direction] == 'E': # right
+      target_index = starting_square_index + distance
+    if directions[direction] == 'W': # left
+      target_index = starting_square_index - distance
+    if directions[direction] == 'S': # down
+      target_index = starting_square_index - 8*distance
+    if directions[direction] == 'SE': # down-right
+      target_index = starting_square_index - 8*distance + distance
+    if directions[direction] == 'SW': # down-left
+      target_index = starting_square_index - 8*distance - distance
+    promotion = chess.QUEEN
+  elif plane_of_execution < 8*7 + 8:
+    # Knight move
+    knight_move_index = (plane_of_execution  - 8*7)
+    rank_diff = 0
+    file_diff = 0
+    if knight_move_index == 0:
+      rank_diff = 2
+      file_diff = 1
+    elif knight_move_index == 1:
+      rank_diff = 1
+      file_diff = 2
+    elif knight_move_index == 2:
+      rank_diff = -1
+      file_diff = 2
+    elif knight_move_index == 3:
+      rank_diff = -2
+      file_diff = 1
+    elif knight_move_index == 4:
+      rank_diff = -2
+      file_diff = -1
+    elif knight_move_index == 5:
+      rank_diff = -1
+      file_diff = -2
+    elif knight_move_index == 6:
+      rank_diff = 1
+      file_diff = -2
+    elif knight_move_index == 7:
+      rank_diff = 2
+      file_diff = -1
+    target_index = starting_square_index + 8*rank_diff + file_diff
+  elif plane_of_execution < 8*7 + 8 + 9:
+    # Pawn promotion
+    pawn_move = plane_of_execution - 8*7 - 8
+    promotions = [chess.KNIGHT, chess.BISHOP, chess.ROOK]
+    promotion = promotions[pawn_move % 3]
+    if pawn_move // 3 == 0: #forward one
+      if starting_square_index >= 8 and starting_square_index < 16: #2nd rank
+        target_index = starting_square_index - 8
+      elif starting_square_index >= 48 and starting_square_index < 53: # 7th rank
+        target_index = starting_square_index + 8
+    if pawn_move // 3 == 1: # capture on the right
+      if starting_square_index >= 8 and starting_square_index < 16: #2nd rank
+        target_index = starting_square_index - 8 - 1
+      elif starting_square_index >= 48 and starting_square_index < 53: # 7th rank
+        target_index = starting_square_index + 8 + 1
+    if pawn_move // 3 == 2: # capture on the left
+      if starting_square_index >= 8 and starting_square_index < 16: #2nd rank
+        target_index = starting_square_index - 8 + 1
+      elif starting_square_index >= 48 and starting_square_index < 53: # 7th rank
+        target_index = starting_square_index + 8 - 1
+  if target_index < 64 and target_index >= 0:
+    target_square = chess.SQUARE_NAMES[target_index]
+    move = chess.Move(chess.parse_square(starting_square), chess.parse_square(target_square), promotion)
+  return move
+
+def is_legal_move(board: chess.Board, move: chess.Move):
+  return True if move in board.legal_moves else False
+
+def get_legal_move_if_possible(board: chess.Board, move: chess.Move) -> Tuple[chess.Move, bool]:
+  if move.uci() == '0000':
+    return (move, False)
+  if is_legal_move(board, move):
+    return (move, True)
+  # try with no promotion
+  move = chess.Move(move.from_square, move.to_square, promotion=None)
+  return (move, True) if is_legal_move(board, move) else (chess.Move.null(), False)
+
+# fen = '8/k6K/8/8/8/8/1p6/8 b - - 0 1'
+# board = chess.Board(fen)
+# print(board)
+# for move in board.legal_moves:
+#   print(move.uci())
+  
+# board.push_uci('b2b1')
+# move = chess.Move(chess.parse_square('a7'),chess.parse_square('a8'), chess.QUEEN )
+# move = chess.Move.null()
+# move,_ = get_legal_move_if_possible(board, move)
+# board.push(move)
+# print(board)

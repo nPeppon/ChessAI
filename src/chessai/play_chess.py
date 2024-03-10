@@ -5,10 +5,10 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from pygame.locals import *
 from typing import Tuple, List
-from chessai.models import base_bot, qlearning_bot
+from chessai.models import base_bot, qlearning_bot, ppo_bot
 from chessai.gui.draw_gui import draw_game, select_square, select_bot, choose_color_screen, create_screen
 
-BOTS = [base_bot.BaseBot(), qlearning_bot.QlearningBot()]
+BOTS = [base_bot.BaseBot(), qlearning_bot.QlearningBot(), ppo_bot.PpoBot()]
 
 def play_against_ai(board):
   bot = select_bot(BOTS)
