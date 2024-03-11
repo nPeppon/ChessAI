@@ -99,6 +99,13 @@ def play_against_ai(board):
     for event in pygame.event.get():
       if event.type == QUIT or (event.type == KEYDOWN and event.key == K_q):
         not_quit = False
+      if event.type == KEYDOWN and event.key == K_r:
+          board.reset()
+          play_against_ai(board)
+          not_quit = False
+      if event.type == KEYDOWN and event.key == K_t:
+        not_quit = False
+        # TODO: add method for each bot that uses this match to train the bot itself
 
   pygame.quit()
   print(f"Winner: {board.outcome()}")

@@ -70,7 +70,7 @@ def choose_color_screen():
 def create_screen():
   pygame.init()
   # Define a new constant for the height of the outcome bar
-  screen = pygame.display.set_mode((8 * SQUARESIZE, 8 * SQUARESIZE + OUTCOME_BAR_HEIGHT))
+  screen = pygame.display.set_mode((8 * SQUARESIZE, 8 * SQUARESIZE + OUTCOME_BAR_HEIGHT*3))
   pygame.display.set_caption("Chess")
   return screen
 
@@ -234,10 +234,25 @@ def select_promotion_piece(screen, promotions_types: List[chess.PieceType]):
     # If the player didn't click on any piece, return None
     return None
   
+def draw_game_over_options(screen, board: Board):
+  if board.is_game_over():
+    # Render the outcome and result to the outcome bar
+    font = pygame.font.Font(None, 32)
+    replay_text = font.render("Press R to play again", True, (255, 255, 255))
+    quit_text = font.render("Press Q to quit", True, (255, 255, 255))
+    quit_and_train_text = font.render("Press T to quit and train model", True, (255, 255, 255))
+    # Create a new surface for the outcome bar
+    outcome_bar = pygame.Surface((SQUARESIZE * 8, OUTCOME_BAR_HEIGHT*3))
+    outcome_bar.fill((0, 0, 0))  # Clear the outcome bar
+    outcome_bar.blit(replay_text, (10, 10))
+    outcome_bar.blit(quit_text, (10, 30))
+    outcome_bar.blit(quit_and_train_text, (10, 50))
+    screen.blit(outcome_bar, (0, 8*SQUARESIZE + OUTCOME_BAR_HEIGHT))
 
 def draw_game(screen, board: Board, player_color: chess.Color, selected_square: Square, latest_uci_move: str):
   draw_board(screen, board, player_color)
   draw_last_move(screen, board, latest_uci_move, player_color)
   draw_valid_moves(screen, board, selected_square, player_color)
   draw_outcome(screen, board)
+  draw_game_over_options(screen, board)
   pygame.display.flip()

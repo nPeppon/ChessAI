@@ -99,12 +99,15 @@ def collect_trajectory(policy_network, board, max_moves=200):
 def get_rewards(board, states):
     rewards = []
     winner = board.result()
+    positive_reward = 1000 / len(states)
     for i in range(len(states)):
-        reward = 0.5
+        reward = -0.5
         if winner == '1-0': # White wins
-            reward = 1 if i % 2 == 0 else -1
+            reward = positive_reward if i % 2 == 0 else -1
         elif winner == '0-1': # Black wins
-            reward = -1 if i % 2 == 0 else 1
+            reward = -1 if i % 2 == 0 else positive_reward
+        elif winner == '1/2-1/2':
+            reward = 0
         rewards.append(reward)
     return rewards
 
@@ -136,7 +139,9 @@ if __name__ == "__main__":
         states, actions, rewards, old_probs = collect_trajectory(policy_network, board)
         advantages = np.zeros_like(rewards, dtype=np.float32)  # Placeholder for advantages (for now)
         ppo_update(policy_network, value_network, optimizer, states, actions, advantages, old_probs, rewards)
-        print(f"Episode {episode + 1}/{num_episodes}: Total Reward = {np.sum(rewards)}")
+        print(f"Episode {episode + 1}/{num_episodes}: Total Reward = {np.sum(rewards)} - Outcome = {board.outcome()}")
+        # if board.outcome() is None:
+        #     print(board)
         if (episode + 1) % 100 == 0:
             policy_network.save_weights(policy_weights_file)
             value_network.save_weights(value_weights_file)
