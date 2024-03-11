@@ -3,6 +3,7 @@ from chessai.chess_helper import chess_utils
 import random
 
 class BaseBot:
+    name = "Base Bot: Random Moves"
     def __init__(self):
         self.name = "Base Bot: Random Moves"
 

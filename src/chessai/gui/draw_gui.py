@@ -4,7 +4,7 @@ import pygame
 import chess
 from chess import Board, Square
 from chessai.models import base_bot, qlearning_bot
-from typing import List
+from typing import List, Type
 
 # Define colors
 WHITE = (210, 210, 210)
@@ -14,6 +14,8 @@ GREEN = (0, 255, 0)  # Color for highlighting valid moves
 VIBRANT_BLUE = (0, 0, 255) # Color for highlighting latest move
 SQUARESIZE = 80  # Size of each chess square
 OUTCOME_BAR_HEIGHT = 50
+LIGHT_VIOLET = (204, 153, 255)
+VIOLET = (138, 43, 226)
 
 # Load pieces images (replace with your image paths)
 piece_images = {'p': pygame.image.load('data\\b_pawn.png'),
@@ -72,7 +74,7 @@ def create_screen():
   pygame.display.set_caption("Chess")
   return screen
 
-def select_bot(bots: List[base_bot.BaseBot]) -> base_bot.BaseBot:
+def select_bot(bots: List[Type[base_bot.BaseBot]]) -> base_bot.BaseBot:
   """
   Selects a bot based on user input using Pygame events. Returns the selected bot.
   """
@@ -93,7 +95,7 @@ def select_bot(bots: List[base_bot.BaseBot]) -> base_bot.BaseBot:
               if pygame.K_1 <= event.key <= pygame.K_9:
                   index = event.key - pygame.K_1
                   if index < len(bots):
-                      return bots[index]
+                      return bots[index]()
 
       screen.fill((0, 0, 0))
       for i, bot in enumerate(bots):
@@ -185,6 +187,53 @@ def draw_outcome(screen, board: Board):
     outcome_bar.blit(outcome_text, (10, 10))
     outcome_bar.blit(result_text, (10, 30))
     screen.blit(outcome_bar, (0, 8*SQUARESIZE))
+
+def select_promotion_piece(screen, promotions_types: List[chess.PieceType]):
+    # Calculate the size of the overlay
+    overlay_width = SQUARESIZE * len(promotions_types)
+    overlay_height = SQUARESIZE
+    # Create an overlay
+    overlay = pygame.Surface((overlay_width, overlay_height))
+    overlay.fill(LIGHT_VIOLET)
+    # Draw a border around the overlay
+    border_color = (138, 43, 226)  # RGB color for violet
+    border_thickness = 5  # Thickness of the border in pixels
+    pygame.draw.rect(overlay, border_color, overlay.get_rect(), border_thickness)
+    # overlay.set_alpha(128)  # Make the overlay semi-transparent
+    # Position the overlay in the center of the screen
+    overlay_pos = ((screen.get_width() - overlay_width) // 2, (screen.get_height() - overlay_height) // 2)
+    screen.blit(overlay, overlay_pos)
+    # Fill the overlay with a grey color
+    offset = overlay_pos[0]
+    for piece_type in promotions_types:
+      piece_image = piece_images[chess.piece_symbol(piece_type)]
+      scaled_piece_image = pygame.transform.scale(piece_image, (SQUARESIZE, SQUARESIZE))
+      screen.blit(scaled_piece_image, (offset, overlay_pos[1]))
+      offset += SQUARESIZE
+
+    # Update the display
+    pygame.display.flip()
+
+    # Wait for the player to click on a piece
+    while True:
+      for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONDOWN:
+          x, y = pygame.mouse.get_pos()
+          # Adjust the mouse position to account for the position of the overlay
+          x -= overlay_pos[0]
+          y -= overlay_pos[1]
+          # Check if the click was within the bounds of the overlay
+          if 0 <= x < overlay_width and 0 <= y < overlay_height:
+              # Calculate the index of the clicked square
+              index = x // SQUARESIZE
+              return promotions_types[index]
+          else:
+            return None
+      pygame.time.wait(10)
+
+    # If the player didn't click on any piece, return None
+    return None
+  
 
 def draw_game(screen, board: Board, player_color: chess.Color, selected_square: Square, latest_uci_move: str):
   draw_board(screen, board, player_color)

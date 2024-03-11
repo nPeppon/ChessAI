@@ -6,9 +6,20 @@ import pygame
 from pygame.locals import *
 from typing import Tuple, List
 from chessai.models import base_bot, qlearning_bot, ppo_bot
-from chessai.gui.draw_gui import draw_game, select_square, select_bot, choose_color_screen, create_screen
+from chessai.gui.draw_gui import draw_game, select_square, select_bot, choose_color_screen, create_screen, select_promotion_piece
 
-BOTS = [base_bot.BaseBot(), qlearning_bot.QlearningBot(), ppo_bot.PpoBot()]
+BOTS = [base_bot.BaseBot, qlearning_bot.QlearningBot, ppo_bot.PpoBot]
+
+def select_move(available_moves: List[chess.Move], screen) -> chess.Move:
+  move = chess.Move.null()
+  if len(available_moves) > 1:
+    promotions_type = [move.promotion for move in available_moves if move.promotion is not None]
+    piece_type = select_promotion_piece(screen, promotions_type)
+    if piece_type is not None:
+      move = [move for move in available_moves if move.promotion == piece_type][0]
+  elif len(available_moves) == 1:
+    move = available_moves[0]
+  return move
 
 def play_against_ai(board):
   bot = select_bot(BOTS)
@@ -20,7 +31,7 @@ def play_against_ai(board):
   selected_piece_moves = []
   last_uci_move = None
   game_over = False
-  if player_color == chess.BLACK:
+  if player_color == chess.BLACK and board.turn == chess.WHITE or player_color == chess.WHITE and board.turn == chess.BLACK:
     last_uci_move = bot.choose_move(board)
   while not game_over:
     for event in pygame.event.get():
@@ -47,9 +58,13 @@ def play_against_ai(board):
             selected_piece_moves = []
           else:
             if clicked_square in [move.to_square for move in selected_piece_moves]:
-              board.push([move for move in selected_piece_moves if move.to_square == clicked_square][0])
-              if not board.is_game_over():
-                last_uci_move = bot.choose_move(board)
+              possible_moves = [move for move in selected_piece_moves if move.to_square == clicked_square]
+              move = select_move(possible_moves, screen)
+              if move.uci() != '0000':
+                print('My move: ' + move.uci())
+                board.push(move)
+                if not board.is_game_over():
+                  last_uci_move = bot.choose_move(board)
             selected_square = None
             selected_piece_moves = []
 
@@ -60,9 +75,13 @@ def play_against_ai(board):
 
         if selected_square is not None and released_square != selected_square:
           if released_square in [move.to_square for move in selected_piece_moves]:
-            board.push([move for move in selected_piece_moves if move.to_square == released_square][0])
-            if not board.is_game_over():
-              do_ai_move(board,  )
+            possible_moves = [move for move in selected_piece_moves if move.to_square == released_square]
+            move = select_move(possible_moves, screen)
+            if move.uci() != '0000':
+              print('My move: ' + move.uci())
+              board.push(move)
+              if not board.is_game_over():
+                last_uci_move = bot.choose_move(board)
           selected_square = None
           selected_piece_moves = []
 
@@ -88,6 +107,7 @@ def play_against_ai(board):
 
 if __name__ == "__main__":
   # Play against the AI
+  # board = chess.Board(fen = '8/k6K/8/8/8/8/1p6/8 b - - 0 1')
   board = chess.Board()
   play_against_ai(board)
   

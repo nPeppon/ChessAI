@@ -4,6 +4,7 @@ from chessai.chess_helper import chess_utils
 import random
 
 class QlearningBot(BaseBot):
+    name = "Q-learning Bot"
     def __init__(self, filename:str = 'q_table_simple.dat'):
         self.name = "Q-learning Bot"
         self.q_table = load_q_table("..\\..\\..\\data\\" + filename)

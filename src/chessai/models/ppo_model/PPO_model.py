@@ -130,13 +130,17 @@ if __name__ == "__main__":
     optimizer = tf.keras.optimizers.Adam()
 
     # Main training loop
-    num_episodes = 1
+    num_episodes = 10000
     for episode in range(num_episodes):
         board = chess.Board()  # Initialize new game
         states, actions, rewards, old_probs = collect_trajectory(policy_network, board)
         advantages = np.zeros_like(rewards, dtype=np.float32)  # Placeholder for advantages (for now)
         ppo_update(policy_network, value_network, optimizer, states, actions, advantages, old_probs, rewards)
         print(f"Episode {episode + 1}/{num_episodes}: Total Reward = {np.sum(rewards)}")
+        if (episode + 1) % 100 == 0:
+            policy_network.save_weights(policy_weights_file)
+            value_network.save_weights(value_weights_file)
+            
 
     # Save the weights of the policy and value networks
     policy_network.save_weights(policy_weights_file)

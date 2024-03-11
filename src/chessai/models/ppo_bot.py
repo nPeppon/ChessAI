@@ -5,6 +5,8 @@ from chessai.models.ppo_model import PolicyNetwork
 import numpy as np
 
 class PpoBot(BaseBot):
+    
+    name = "PPO Bot"
     def __init__(self, filename:str = 'policy_network.weights.h5'):
         self.name = "PPO Bot"
         # Load the weights of the policy network
