@@ -13,6 +13,7 @@ dist/
 # Compiled Python bytecode
 *.py[cod]
 # Python
+venv
 chess_venv/
 *.egg-info/
 

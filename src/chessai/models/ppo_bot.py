@@ -1,16 +1,19 @@
 import chess
 from .base_bot import BaseBot
 from chessai.chess_helper import chess_utils
-from chessai.models.ppo_model import PolicyNetwork
+from chessai.models.ppo_model.PPO_model import PolicyNetwork
 import numpy as np
 
+
 class PpoBot(BaseBot):
-    
+
     name = "PPO Bot"
-    def __init__(self, filename:str = 'policy_network.weights.h5'):
+
+    def __init__(self, filename: str = 'policy_network.weights.h5'):
         self.name = "PPO Bot"
         # Load the weights of the policy network
-        self.policy_network = PolicyNetwork.create(chess_utils.CHESS_NUM_ACTIONS)  # Replace with your function to create the policy network
+        # Replace with your function to create the policy network
+        self.policy_network = PolicyNetwork.create(chess_utils.CHESS_NUM_ACTIONS)
         self.policy_network.load_weights('data\\ppo_model\\' + filename)
 
     def choose_move(self, board: chess.Board) -> str:
